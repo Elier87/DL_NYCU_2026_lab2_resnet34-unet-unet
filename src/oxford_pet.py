@@ -9,7 +9,7 @@ from torchvision.transforms import InterpolationMode
 data_dir = Path(r"/home/re6141029/DL/dl_lab2/dataset/oxford-iiit-pet/")
 
 class OxfordPetDataset(Dataset):
-    def __init__(self, root, split="train", size=(224,224), transform=None):
+    def __init__(self, root, split="train", size=(572 ,572), transform=None):
         self.root = Path(root)
         self.split = split
         self.transform = transform
@@ -37,7 +37,7 @@ class OxfordPetDataset(Dataset):
     def __getitem__(self, idx):
         image_id = self.image_ids[idx]
         image_path = self._get_image_path(image_id)
-        image = Image.open(image_path).convert("RGB")
+        image = Image.open(image_path).convert("L")
         image = self.image_resize(self.to_tensor(image))
 
         if self.split != "test":
