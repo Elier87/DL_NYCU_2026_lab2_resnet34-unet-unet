@@ -1,0 +1,59 @@
+import torch
+from tqdm import tqdm
+import torch.nn as nn
+import torch.optim as optim
+from oxford_pet import OxfordPetDataset
+from pathlib import Path
+from torch.utils.data import DataLoader, Dataset
+
+lr       = 1e-3
+epochs   = 1
+data_dir = Path(r"/home/re6141029/DL/dl_lab2/dataset/oxford-iiit-pet/")
+
+
+class testmodel(nn.Module):
+    def __init__(self):
+        super().__init__()
+        self.conv1  = nn.Conv2d(3, 8, 3, 1, 1)
+        self.relu   = nn.ReLU()
+        self.conv2  = nn.Conv2d(8, 1, 3, 1, 1)
+
+    def forward(self, img):
+        img = self.conv1(img)
+        img = self.relu(img)
+        img = self.conv2(img)
+        return img
+    
+
+model       = testmodel()
+criterion   = nn.BCEWithLogitsLoss()
+optimizer   = optim.Adam(model.parameters(),lr=lr)
+
+train_data  = OxfordPetDataset(data_dir,"train")
+train       = DataLoader(train_data, 8, False)
+loss_list   = []
+cum_loss    = 0
+
+for epoch in range(epochs):
+    model       = testmodel()
+    cum_loss    = 0
+    bar         = tqdm(train, desc=f"Epoch: {epoch+1}/{epochs}")
+    
+    for batch in bar:  
+        imgs        = batch["image"]
+        masks       = batch["mask"].float()
+
+        optimizer.zero_grad()    
+        outputs     = model(imgs)
+        loss        = criterion(outputs, masks)
+        loss.backward()
+        optimizer.step()
+        cum_loss    += loss.item()
+                
+        #print(f"epoch: {epoch+1:02d}, batch: {idx+1:02d}, loss: {loss.item():.4f}")
+        bar.set_postfix(loss=f"{loss.item():.4f}", lr=f"{lr:.6f}")
+    
+    avg_loss    = cum_loss/len(train)
+    loss_list.append(avg_loss)
+    print(f"Epoch: {epoch+1}/{epochs}, average training loss: {avg_loss:.4f}")
+
