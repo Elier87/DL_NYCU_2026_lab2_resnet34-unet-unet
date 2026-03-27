@@ -20,7 +20,6 @@ momentum = 0.99
 batch    = 1
 mode     = "Multi"
 dice_weight = 0.5
-
 model       = Unet(1,2).to(device)
 
 if mode == "Multi":
@@ -88,7 +87,7 @@ for epoch in range(epochs):
 
     if avg_val_loss < best_model_loss:
         best_model = ckpt
-        best_path  = save_dir / "best_unet" / f"unet_{epoch+1:02d}_{avg_train_loss:.3f}_{avg_val_loss:.3f}.pth"
+        best_path  = save_dir / "best_unet" / "best_unet.pth"
 
     print(f"Epoch: {epoch+1}/{epochs}, avg_train_loss: {avg_train_loss:.4f}, avg_val_loss: {avg_val_loss:.4f}")
 
