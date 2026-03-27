@@ -1,15 +1,13 @@
 import torch
 import torch.nn as nn
-import torch.optim as optim
-import torch.functional as F
 
 class double_conv(nn.Module):
     def __init__(self, in_c, out_c):
         super().__init__()
         self.block  = nn.Sequential(
-            nn.Conv2d(in_c, out_c, 3, 1, 0),
+            nn.Conv2d(in_c, out_c, 3),
             nn.ReLU(),
-            nn.Conv2d(out_c, out_c, 3, 1, 0),
+            nn.Conv2d(out_c, out_c, 3),
             nn.ReLU()           
         )
     def forward(self, img):
@@ -18,26 +16,24 @@ class double_conv(nn.Module):
 class down(nn.Module):
     def __init__(self, in_c, out_c):
         super().__init__()
-        self.conv = double_conv(in_c, out_c)
-        self.pool = nn.MaxPool2d(2)
+        self.conv = double_conv(in_c, out_c)  
+        self.pool = nn.MaxPool2d(2)              
 
     def forward(self, img):
         img_conv = self.conv(img)       #for skip_channel
-        img_pool = self.pool(img_conv)
+        img_pool = self.pool(img_conv)        
         return img_conv, img_pool
     
 
 def copy_crop(src, target):
-    _, _, h_s, w_s = src.shape 
-    _, _, h_t, w_t = target.shape
+    _, _, h_s, _ = src.shape 
+    _, _, h_t, _ = target.shape
 
-    delta_h = h_s - h_t
-    delta_w = w_s - w_t
+    delta_ridge = h_s - h_t
+    top     = delta_ridge // 2
+    down    = top + h_t
 
-    top     = delta_h // 2
-    left    = delta_w // 2
-
-    return src[:, :, top:top+delta_h, left:left+delta_w]
+    return src[:, :, top:down, top:down] #c'z square
 
 
 
@@ -47,10 +43,10 @@ class up(nn.Module):
         self.up     = nn.ConvTranspose2d(in_c, out_c, 2, 2)
         self.conv   = double_conv(out_c+skip_c, out_c)
 
-    def forwar(self, img, img_skip):
+    def forward(self, img, img_skip):
         img      = self.up(img)
         img_skip = copy_crop(img_skip, img)
-        img      = torch.cat(img_skip, img, dim = 1)
+        img      = torch.cat([img_skip, img], dim = 1)
         img      = self.conv(img)
         return img
 
@@ -63,10 +59,10 @@ class outconv(nn.Module):
         return self.conv(img)
 
 
-class unet(nn.Module):
+class Unet(nn.Module):
     def __init__(self, n_channels=1, n_classes=2, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.down1 = double_conv(n_channels, 64)
+        self.down1 = down(n_channels, 64)
         self.down2 = down(64, 128)
         self.down3 = down(128, 256)
         self.down4 = down(256, 512)
@@ -81,24 +77,21 @@ class unet(nn.Module):
         self.out_c  = outconv(64, n_classes)
 
     def forward(self, img):
-        img1   = self.down1(img)
+        skip1, img1 = self.down1(img)
         skip2, img2 = self.down2(img1)
         skip3, img3 = self.down3(img2)
         skip4, img4 = self.down4(img3)
 
-        mid_img     = self.bottom(img4)
+        mid_img = self.bottom(img4)
 
         img5        = self.up1(mid_img, skip4)
         img6        = self.up2(img5, skip3)
         img7        = self.up3(img6, skip2)
-        img8        = self.up4(img7, img1)
+        img8        = self.up4(img7, skip1)
 
         output      =self.out_c(img8)
 
         return output
-
-
-
 
 
 

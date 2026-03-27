@@ -27,11 +27,11 @@ class OxfordPetDataset(Dataset):
         else:
             raise ValueError(f"Unknown split: {self.split}")
         
-        self.image_ids  = self._read_split_txt(split_file)
-        self.to_tensor  = T.ToTensor()
+        self.image_ids      = self._read_split_txt(split_file)
+        self.to_tensor      = T.ToTensor()
         self.img_size       = size
         self.image_resize   = T.Resize(size, interpolation=InterpolationMode.BILINEAR)
-        self.mask_resize    = T.Resize(size, interpolation=InterpolationMode.NEAREST)
+        self.mask_resize    = T.Resize((388, 388), interpolation=InterpolationMode.NEAREST)
         
 
     def __getitem__(self, idx):
@@ -46,9 +46,9 @@ class OxfordPetDataset(Dataset):
             mask = (trimap == 1).astype(np.uint8)
             mask = Image.fromarray(mask)
             mask = self.mask_resize(mask)
-            mask = torch.from_numpy(np.array(mask)).unsqueeze(0)
+            mask = torch.from_numpy(np.array(mask)).long()
         else:
-            mask = torch.zeros((1,self.img_size[0],self.img_size[1]),dtype=torch.long)
+            mask = torch.zeros((self.img_size[0],self.img_size[1]),dtype=torch.long)
         return {
             "image" : image,
             "mask"  : mask,
@@ -79,18 +79,11 @@ class OxfordPetDataset(Dataset):
         
         
 
+data = OxfordPetDataset(data_dir, "train")
+train = next(iter(DataLoader(data,80,None)))
+print(train["image"][55])
+print(train["image"].shape)
+print(train["mask"][55])
+print(train["id"][55])
 
-
-train_dataset = OxfordPetDataset(root=data_dir, split="test")
-train = DataLoader(train_dataset, batch_size=8, shuffle = False)
-print(train_dataset[10]["mask"])
-print(train_dataset[10]["image"].shape)
-
-batch = next(iter(train))
-print(batch["mask"])
-
-
-
-    
-    
     
