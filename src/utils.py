@@ -31,7 +31,7 @@ def Dice_score_Binary_train(logits, targets, eps=1e-8):
     return 1-dice_score.mean()
 
 class Dice_loss_binary(nn.Module):
-    def __init__(self, bce_weight=0.5, dice_weight=0.5):
+    def __init__(self, dice_weight=0.5, bce_weight=0.5):
         super().__init__()
         self.bce = nn.BCEWithLogitsLoss()
         self.dice = Dice_score_Binary_train()
@@ -66,7 +66,7 @@ def Dice_score_multi_train(logits, targets, fg=1, eps=1e-8):
     return 1 - dice_score.mean()
 
 class Dice_loss_multi(nn.Module):
-    def __init__(self, ce_weight, dice_weight, fg=1):
+    def __init__(self, dice_weight, ce_weight, fg=1):
         super().__init__()
         self.ce          = nn.CrossEntropyLoss()
         self.ce_weight   = ce_weight

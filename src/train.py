@@ -27,13 +27,20 @@ if mode == "Multi":
 else:
     criterion = Dice_loss_binary(dice_weight, 1-dice_weight) 
 optimizer   = optim.SGD(model.parameters(), lr=lr, momentum=momentum)
+schedular   = optim.lr_scheduler.ReduceLROnPlateau(
+    optimizer,
+    mode    = "max",
+    factor  = 0.1,
+    patience= 3
+)
+early_stop  = 5
+stop_lag    = 0
 
 train_data  = OxfordPetDataset(data_dir, "train")
 val_data    = OxfordPetDataset(data_dir, "val")
 train       = DataLoader(train_data, batch, False)
 val         = DataLoader(val_data, batch, False)
 
-best_model_loss  = float("inf")
 best_model       = ""
 best_dice_score  = -1.0
 history     = {
@@ -67,6 +74,9 @@ for epoch in range(epochs):
     history["val_loss"].append(avg_val_loss)
     history["val_dice"].append(avg_val_dice)
 
+    schedular.step(avg_val_dice)
+    lr = optimizer.param_groups[0]["lr"]
+
     ckpt    = {
         "epoch": epoch + 1,
         "model_state_dict": model.state_dict(),
@@ -80,15 +90,18 @@ for epoch in range(epochs):
         "lr": lr
     }
 
-    #torch.save(ckpt, save_dir/"latest.pth")
-
     save_path = save_dir / f"unet_{epoch+1:02d}_{avg_train_loss:.3f}_{avg_val_loss:.3f}.pth"
     torch.save(ckpt, save_path)
 
-    if avg_val_loss < best_model_loss:
+    if avg_val_dice > best_dice_score:
         best_model = ckpt
+        stop_lag   = 0
         best_path  = save_dir / "best_unet" / "best_unet.pth"
 
-    print(f"Epoch: {epoch+1}/{epochs}, avg_train_loss: {avg_train_loss:.4f}, avg_val_loss: {avg_val_loss:.4f}")
+    print(f"Epoch: {epoch+1}/{epochs}, avg_train_loss: {avg_train_loss:.4f}, avg_val_loss: {avg_val_loss:.4f}, lr: {lr:.4f}")
+
+    if stop_lag >= early_stop:
+        print(f"early stop, Epoch: {epoch+1}/{epochs}")
+        break
 
 torch.save(ckpt, best_path)    
